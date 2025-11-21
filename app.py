@@ -1,11 +1,10 @@
-import datetime
-import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
-
-from dotenv import load_dotenv
-load_dotenv()
+from PIL import Image
+import requests
+from io import BytesIO
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -14,9 +13,15 @@ CORS(app)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Dummy in-memory "database" for login/register
-USERS = {}  # username -> password
-USER_HISTORY = {}  # username -> list of foods
+# Dummy in-memory users/history
+USERS = {}
+USER_HISTORY = {}
+
+# Hugging Face API
+HF_API_KEY = os.getenv("HF_API_KEY")
+HF_MODEL = "google/vit-base-patch16-224"  # example, can replace with a food-specific model
+HF_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
+HEADERS = {"Authorization": f"Bearer {HF_API_KEY}"}
 
 @app.route("/")
 def home():
@@ -47,7 +52,6 @@ def register():
 # ---------------- ANALYZE ----------------
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    # Check image
     if "image" not in request.files:
         return jsonify({"success": False, "message": "No image uploaded"}), 400
 
@@ -59,14 +63,31 @@ def analyze():
     img_path = os.path.join(UPLOAD_FOLDER, image.filename)
     image.save(img_path)
 
-    # Dummy AI analysis (replace with real model later)
-    detected_foods = [
-        {"name": "Sandwich", "calories": 350},
-        {"name": "Apple", "calories": 95}
-    ]
+    # ---------------- Hugging Face API call ----------------
+    with open(img_path, "rb") as f:
+        img_bytes = f.read()
+
+    response = requests.post(
+        HF_URL,
+        headers=HEADERS,
+        files={"file": img_bytes}
+    )
+
+    if response.status_code != 200:
+        return jsonify({"success": False, "message": "Error from AI model"}), 500
+
+    predictions = response.json()
+
+    # Extract top 2 predicted foods (example)
+    detected_foods = []
+    for pred in predictions[:2]:
+        name = pred.get("label", "Unknown")
+        calories = 100  # placeholder, you can implement real calorie lookup later
+        detected_foods.append({"name": name, "calories": calories})
+
     total_calories = sum(f["calories"] for f in detected_foods)
 
-    # Save to user history if username provided in headers
+    # Save to user history
     username = request.headers.get("username")
     if username and username in USER_HISTORY:
         USER_HISTORY[username].extend(detected_foods)
