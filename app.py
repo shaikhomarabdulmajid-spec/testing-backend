@@ -16,6 +16,11 @@ CORS(app)
 
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "defaultsecret")
 
+@app.route("/")
+def home():
+    return "Backend is running!"
+
+
 # Load calorie DB
 with open("calorie_db.json", "r") as f:
     CALORIES = json.load(f)
