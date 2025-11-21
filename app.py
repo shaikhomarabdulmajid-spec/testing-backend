@@ -8,6 +8,7 @@ import jwt
 import datetime
 import json
 import os
+os.makedirs("uploads", exist_ok=True)
 
 
 from database import users
