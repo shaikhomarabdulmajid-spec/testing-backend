@@ -1,3 +1,6 @@
+from flask_cors import CORS
+CORS(app)
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -5,6 +8,7 @@ import jwt
 import datetime
 import json
 import os
+
 
 from database import users
 
@@ -106,46 +110,41 @@ def history():
 
 
 # --------------------------
-#   ANALYZE (fake AI model)
+#   ANALYZE
 # --------------------------
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    decoded = decode_token(token)
-    if not decoded:
-        return jsonify({"success": False, "message": "Invalid token"})
+    try:
+        # Check file uploaded
+        if "image" not in request.files:
+            return jsonify({"success": False, "message": "No file uploaded"}), 400
 
-    # The frontend sends form-data with an image file called "image"
-    if "image" not in request.files:
-        return jsonify({"success": False, "message": "No image uploaded"})
+        image = request.files["image"]
 
-    img = request.files["image"]
-    name = img.filename.lower()
+        if image.filename == "":
+            return jsonify({"success": False, "message": "No file selected"}), 400
 
-    # Very simple fake model
-    predicted_food = None
-    for food in CALORIES:
-        if food in name:
-            predicted_food = food
-            break
+        # Save image temporarily
+        img_path = os.path.join("uploads", image.filename)
+        image.save(img_path)
 
-    if predicted_food is None:
-        predicted_food = "unknown"
+        # Fake model output (replace later if needed)
+        detected_food = "Sandwich"
+        calories = 350
+        steps = 4500
 
-    calorie = CALORIES.get(predicted_food, 0)
+        # Return EXACT format that your frontend expects
+        return jsonify({
+            "success": True,
+            "food": detected_food,
+            "calories": calories,
+            "steps": steps
+        })
 
-    # Save in user history
-    users.update_one(
-        {"email": decoded["email"]},
-        {"$push": {"history": {"food": predicted_food, "calories": calorie}}}
-    )
-
-    return jsonify({
-        "success": True,
-        "food": predicted_food,
-        "calories": calorie
-    })
+    except Exception as e:
+        print("ANALYZE ERROR:", e)
+        return jsonify({"success": False, "message": "Server error"}), 500
 
 
 # --------------------------
