@@ -117,31 +117,25 @@ def history():
 @app.route("/analyze", methods=["POST"])
 def analyze():
     try:
-        # Check file uploaded
         if "image" not in request.files:
-            return jsonify({"success": False, "message": "No file uploaded"}), 400
+            return jsonify({"success": False, "message": "No image"}), 400
 
         image = request.files["image"]
 
-        if image.filename == "":
-            return jsonify({"success": False, "message": "No file selected"}), 400
-
-        # Save image temporarily
         img_path = os.path.join("uploads", image.filename)
         image.save(img_path)
 
-        # Fake model output (replace later if needed)
-        detected_food = "Sandwich"
-        calories = 350
-        steps = 4500
-
-        # Return EXACT format that your frontend expects
+        # Dummy response
         return jsonify({
             "success": True,
-            "food": detected_food,
-            "calories": calories,
-            "steps": steps
+            "food": "Sandwich",
+            "calories": 350,
+            "steps": 4200
         })
+
+    except Exception as e:
+        print("Analyze Error:", e)
+        return jsonify({"success": False, "message": "Server error"}), 500
 
     except Exception as e:
         print("ANALYZE ERROR:", e)
